@@ -111,6 +111,122 @@ export default function KnowledgeMap({ profile }: KnowledgeMapProps) {
         </div>
       </div>
 
+      {/* Visual Constellation Map of Reading Journey */}
+      <div className="p-6 bg-stone-900 text-white rounded-2xl space-y-4 shadow-md relative overflow-hidden">
+        <div className="absolute right-0 top-0 translate-y-1 translate-x-2 text-white/5 font-bold text-5xl select-none pointer-events-none">
+          JOURNEY
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
+            🌌 Bản đồ Chòm sao Socratic THPT
+          </h3>
+          <p className="text-[10px] text-stone-400 font-medium">Lộ trình tiến hóa học thức từ Học Giả Sơ Cấp đến Hiền Nhân Học Đường</p>
+        </div>
+
+        <div className="relative w-full overflow-x-auto py-2">
+          <svg className="mx-auto min-w-[500px] h-36" viewBox="0 0 500 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="glow-effect" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {/* Connecting lines */}
+            {[
+              { from: [50, 65], to: [150, 35], active: profile.level >= 2 },
+              { from: [150, 35], to: [250, 75], active: profile.level >= 3 },
+              { from: [250, 75], to: [350, 25], active: profile.level >= 4 },
+              { from: [350, 25], to: [450, 65], active: profile.level >= 5 }
+            ].map((line, idx) => (
+              <line
+                key={idx}
+                x1={line.from[0]}
+                y1={line.from[1]}
+                x2={line.to[0]}
+                y2={line.to[1]}
+                stroke={line.active ? "#f59e0b" : "#374151"}
+                strokeWidth={line.active ? "3" : "2"}
+                strokeDasharray={line.active ? "none" : "4 4"}
+                filter={line.active ? "url(#glow-effect)" : undefined}
+                className="transition-all duration-500"
+              />
+            ))}
+
+            {/* Stars/Nodes */}
+            {[
+              { x: 50, y: 65, lvl: 1, name: "Sơ cấp", emoji: "🌱" },
+              { x: 150, y: 35, lvl: 2, name: "Thám hiểm", emoji: "🧭" },
+              { x: 250, y: 75, lvl: 3, name: "Trinh sát", emoji: "⚔️" },
+              { x: 350, y: 25, lvl: 4, name: "Cố vấn", emoji: "🎓" },
+              { x: 450, y: 65, lvl: 5, name: "Hiền nhân", emoji: "🔮" }
+            ].map((node) => {
+              const active = profile.level >= node.lvl;
+              const current = profile.level === node.lvl;
+              return (
+                <g key={node.lvl} className="cursor-pointer group">
+                  {/* Outer circle pulse for active/current */}
+                  {active && (
+                    <circle
+                      cx={node.x}
+                      cy={node.y}
+                      r={current ? "18" : "14"}
+                      fill="#d97706"
+                      opacity={current ? "0.3" : "0.15"}
+                      className={current ? "animate-ping" : ""}
+                    />
+                  )}
+                  {/* Main circle */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r="12"
+                    fill={active ? (current ? "#f59e0b" : "#b45309") : "#1f2937"}
+                    stroke={active ? "#fef3c7" : "#4b5563"}
+                    strokeWidth="2"
+                    filter={active ? "url(#glow-effect)" : undefined}
+                    className="transition-all duration-300 group-hover:scale-110"
+                  />
+                  {/* Emoji / Number inside */}
+                  <text
+                    x={node.x}
+                    y={node.y + 3.5}
+                    textAnchor="middle"
+                    fontSize="9.5"
+                    fill={active ? "#fff" : "#9ca3af"}
+                  >
+                    {node.emoji}
+                  </text>
+                  
+                  {/* Label */}
+                  <text
+                    x={node.x}
+                    y={node.y + 24}
+                    textAnchor="middle"
+                    fontSize="8.5"
+                    fontWeight="bold"
+                    fill={active ? (current ? "#fbbf24" : "#d97706") : "#6b7280"}
+                  >
+                    {node.name}
+                  </text>
+                  <text
+                    x={node.x}
+                    y={node.y - 18}
+                    textAnchor="middle"
+                    fontSize="7"
+                    fontWeight="bold"
+                    fill="#9ca3af"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    Cấp {node.lvl}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+
       {/* Main Grid: Cognitive vector map vs Medals */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
@@ -173,9 +289,9 @@ export default function KnowledgeMap({ profile }: KnowledgeMapProps) {
             {profile.badges.map(badge => (
               <div
                 key={badge.id}
-                className={`p-4 rounded-xl border transition-all flex gap-3 ${
+                className={`p-4 rounded-xl border transition-all duration-300 flex gap-3 ${
                   badge.isUnlocked
-                    ? "bg-amber-50/40 border-amber-200/80 shadow-sm"
+                    ? "bg-gradient-to-br from-amber-50/60 to-orange-50/40 border-amber-300 shadow-md shadow-amber-500/5 hover:scale-[1.03]"
                     : "bg-stone-50 border-stone-150 opacity-60"
                 }`}
               >

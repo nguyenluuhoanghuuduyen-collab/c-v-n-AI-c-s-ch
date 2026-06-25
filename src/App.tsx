@@ -30,7 +30,7 @@ import MentorChat from "./components/MentorChat";
 
 export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "active-session" | "chat">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "active-session" | "chat" | "settings">("dashboard");
   const [addingBookMode, setAddingBookMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -45,26 +45,48 @@ export default function App() {
   // Backend loading states
   const [chatLoading, setChatLoading] = useState(false);
   const [apiHealth, setApiHealth] = useState({ hasApiKey: false, checked: false });
+  
+  // AI and gamification states
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [nudgeText, setNudgeText] = useState("Đang tải cú hích đọc sách hôm nay của cậu nhen... 🚀");
+  const [celebration, setCelebration] = useState<{ type: "session" | "book", bookTitle: string } | null>(null);
+
+  // Helper to get request headers, including custom API key
+  const getHeaders = () => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json"
+    };
+    if (profile?.customApiKey) {
+      headers["x-api-key"] = profile.customApiKey;
+    }
+    return headers;
+  };
 
   // Load from local storage initially
   useEffect(() => {
+    let activeProfile: UserProfile | null = null;
     const saved = localStorage.getItem("ai_reading_mentor_profile");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         setProfile(parsed);
+        activeProfile = parsed;
       } catch (e) {
-        setProfile({ ...DEFAULT_USER_PROFILE, books: CURATED_BOOKS });
+        const defaultProf = { ...DEFAULT_USER_PROFILE, books: CURATED_BOOKS };
+        setProfile(defaultProf);
+        activeProfile = defaultProf;
       }
     } else {
       // Setup default curated books ready to view or go onboard
-      setProfile({ ...DEFAULT_USER_PROFILE, books: CURATED_BOOKS });
+      const defaultProf = { ...DEFAULT_USER_PROFILE, books: CURATED_BOOKS };
+      setProfile(defaultProf);
+      activeProfile = defaultProf;
     }
 
     // Check API availability
     fetch("/api/health")
       .then((r) => r.json())
-      .then((d) => setApiHealth({ hasApiKey: d.hasApiKey, checked: true }))
+      .then((d) => setApiHealth({ hasApiKey: d.hasApiKey || !!activeProfile?.customApiKey, checked: true }))
       .catch(() => setApiHealth({ hasApiKey: false, checked: true }));
   }, []);
 
@@ -74,6 +96,45 @@ export default function App() {
     localStorage.setItem("ai_reading_mentor_profile", JSON.stringify(newProfile));
   };
 
+  // Fetch dynamic nudge based on profile & active book
+  useEffect(() => {
+    if (!profile || !profile.didOnboard) return;
+    
+    const fetchNudge = async () => {
+      try {
+        const activeBook = profile.books.find(b => b.id === profile.activeBookId);
+        const response = await fetch("/api/mentor/generate-nudge", {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            name: profile.name,
+            interests: profile.interests,
+            goals: profile.goals,
+            activeBookTitle: activeBook?.title,
+            activeBookAuthor: activeBook?.author,
+            streakCount: profile.streakCount
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.message) {
+            setNudgeText(data.message);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load nudge:", e);
+      }
+      
+      const activeBook = profile.books.find(b => b.id === profile.activeBookId);
+      setNudgeText(
+        `Chào ${profile.name}! Tối nay cậu đã sẵn sàng lật các trang sách mục tiêu của "${activeBook?.title || "Sách trên kệ"}" chưa? Hãy cố gắng duy trì thói quen đọc tuyệt vời này nhé! 🔥`
+      );
+    };
+
+    fetchNudge();
+  }, [profile?.activeBookId, profile?.streakCount, profile?.name]);
+
   if (!profile) return null;
 
   // Complete onboarding flow
@@ -82,7 +143,8 @@ export default function App() {
     interests: string,
     vocab: "Sơ cấp" | "Trung cấp" | "Cao cấp",
     goals: string,
-    recommended: Book[]
+    recommended: Book[],
+    customApiKey?: string
   ) => {
     // Merge recommended books with default ones
     const combinedBooks = recommended.length > 0 ? [...recommended, ...CURATED_BOOKS] : CURATED_BOOKS;
@@ -105,9 +167,13 @@ export default function App() {
       books: combinedBooks,
       activeBookId: combinedBooks[0].id,
       badges: initialBadges,
-      streakCount: Math.max(1, profile.streakCount) // Start light streak!
+      streakCount: Math.max(1, profile.streakCount), // Start light streak!
+      customApiKey
     };
     updateProfile(newProfile);
+    if (customApiKey) {
+      setApiHealth(prev => ({ ...prev, hasApiKey: true }));
+    }
   };
 
   // Add custom manual book brought to school
@@ -153,6 +219,77 @@ export default function App() {
     setAddingBookMode(false);
   };
 
+  // Add book automatically using Gemini API
+  const handleAddAiBook = async () => {
+    if (!newBookTitle.trim()) {
+      alert("Vui lòng nhập tên cuốn sách để AI phân tích nhé!");
+      return;
+    }
+    setAiAnalyzing(true);
+    try {
+      const response = await fetch("/api/mentor/analyze-book", {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          title: newBookTitle,
+          author: newBookAuthor
+        })
+      });
+      if (!response.ok) {
+        throw new Error("Không thể kết nối đến máy chủ AI.");
+      }
+      const data = await response.json();
+      const b = data.bookDetails;
+      if (!b || !b.title) {
+        throw new Error("Dữ liệu sách trả về không hợp lệ.");
+      }
+
+      const bookEntry: Book = {
+        id: `ai-${Date.now()}`,
+        title: b.title,
+        author: b.author,
+        category: b.category,
+        zpdRating: b.zpdRating,
+        whyRecommend: b.whyRecommend,
+        skillsUnlocked: b.skillsUnlocked,
+        coverTheme: b.coverTheme || "from-stone-600 via-stone-700 to-stone-900",
+        sessionsCompleted: 0,
+        isCompleted: false,
+        notes: [],
+        chatHistory: [
+          {
+            id: `ai-welcome-${Date.now()}`,
+            role: "model",
+            content: `Chào mừng cậu tới phiên đọc cuốn sách "${b.title}"! 💫 AI Mentor đã thiết lập lộ trình cho cuốn sách này dựa trên vùng phát triển gần nhất (ZPD) của cậu. Hãy sẵn sàng bấm đọc nhen!`,
+            timestamp: new Date().toISOString()
+          }
+        ],
+        microGoal: {
+          pagesPerSession: b.microGoal?.pagesPerSession || 8,
+          timeEstimateMinutes: b.microGoal?.timeEstimateMinutes || 12,
+          totalSessions: b.microGoal?.totalSessions || 15,
+          sessionDescription: b.microGoal?.sessionDescription || `Đọc ${b.microGoal?.pagesPerSession} trang sách.`
+        }
+      };
+
+      const newProfile = {
+        ...profile,
+        books: [bookEntry, ...profile.books],
+        activeBookId: bookEntry.id
+      };
+      updateProfile(newProfile);
+      setNewBookTitle("");
+      setNewBookAuthor("");
+      setAddingBookMode(false);
+      alert(`Đã thêm thành công sách "${b.title}" bằng AI!`);
+    } catch (e: any) {
+      console.error(e);
+      alert("Hệ thống phân tích sách AI đang bận. Cậu có thể tự điền các chỉ số thủ công nhé!");
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
+
   // Delete a book from library
   const handleDeleteBook = (bookId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -187,6 +324,12 @@ export default function App() {
         const nextCompleted = b.sessionsCompleted + 1;
         const totalReq = b.microGoal.totalSessions;
         const isCompleted = nextCompleted >= totalReq;
+
+        if (isCompleted && !b.isCompleted) {
+          setCelebration({ type: "book", bookTitle: b.title });
+        } else {
+          setCelebration({ type: "session", bookTitle: b.title });
+        }
 
         // Custom model welcome seed prompt
         const promptSeed: ChatMessage = {
@@ -340,9 +483,7 @@ export default function App() {
 
       const response = await fetch("/api/mentor/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: getHeaders(),
         body: JSON.stringify({
           chatHistory: historyForApi,
           bookTitle: activeBook.title,
@@ -606,12 +747,33 @@ export default function App() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-stone-900 text-white font-bold rounded text-[10px] uppercase cursor-pointer tracking-wider"
-                >
-                  Ghi danh lên kệ
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={aiAnalyzing || !newBookTitle.trim()}
+                    onClick={handleAddAiBook}
+                    className="flex-1 py-2 bg-amber-600 disabled:bg-stone-300 text-white font-bold rounded text-[10px] uppercase cursor-pointer tracking-wider flex items-center justify-center gap-1.5"
+                  >
+                    {aiAnalyzing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent" />
+                        <span>Đang phân tích...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                        <span>Thêm bằng AI ✨</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 bg-stone-900 text-white font-bold rounded text-[10px] uppercase cursor-pointer tracking-wider"
+                  >
+                    Thêm thủ công
+                  </button>
+                </div>
               </form>
             ) : (
               /* Book catalog list scroll area */
@@ -693,11 +855,12 @@ export default function App() {
         <section className="lg:col-span-8 flex flex-col space-y-6">
           
           {/* Main workspace navigation tabs */}
-          <div className="bg-white border border-stone-200 p-1.5 rounded-2xl flex gap-1 shadow-sm">
+          <div className="bg-white border border-stone-200 p-1.5 rounded-2xl flex flex-wrap gap-1 shadow-sm">
             {[
               { id: "dashboard", label: "🗺️ Bản đồ & Nudges", desc: "Tiến độ tri thức & câu đố" },
-              { id: "active-session", label: "📖 Bàn Đọc Sách", desc: "Phiên mục tiêu & đồng hồ ghi sổ" },
-              { id: "chat", label: "💬 Lounge Socratic", desc: "Đối thoại với Mentor" }
+              { id: "active-session", label: "📖 Bàn Đọc Sách", desc: "Phiên mục tiêu & đồng hồ" },
+              { id: "chat", label: "💬 Lounge Socratic", desc: "Đối thoại với Mentor" },
+              { id: "settings", label: "⚙️ Cài đặt & Hồ sơ", desc: "API Key & thông tin" }
             ].map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -705,13 +868,13 @@ export default function App() {
                   key={tab.id}
                   onClick={() => {
                     // Prevent entering reading rooms or chats without selecting a book first
-                    if (tab.id !== "dashboard" && !profile.activeBookId) {
+                    if (tab.id !== "dashboard" && tab.id !== "settings" && !profile.activeBookId) {
                       alert("Vui lòng kích hoạt một cuốn sách trên kệ của cậu trước nhé!");
                       return;
                     }
                     setActiveTab(tab.id as any);
                   }}
-                  className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all text-center flex flex-col items-center justify-center cursor-pointer ${
+                  className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all text-center flex flex-col items-center justify-center cursor-pointer min-w-[120px] ${
                     active
                       ? "bg-amber-600 text-white shadow-md shadow-amber-600/15"
                       : "text-stone-500 hover:text-stone-800 hover:bg-stone-50"
@@ -737,14 +900,14 @@ export default function App() {
                 </div>
                 <div className="flex gap-4 items-start">
                   <div className="p-2 bg-amber-500 rounded-full text-stone-900 shrink-0">
-                    <Sparkles className="w-5 h-5 animate-spin" />
+                    <Sparkles className="w-5 h-5 animate-pulse" />
                   </div>
                   <div className="space-y-1">
                     <span className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Cú Hích Thúc Đẩy Học Tập</span>
                     <p className="text-xs font-medium leading-relaxed italic">
-                      "Nam ơi, tối nay cậu đã dành ra 10 phút đọc chưa? Hãy lật Sách Của Cậu, rải trí tuệ lên 8 trang Hoàng Tử Bé nhé! Mục tiêu cực nhỏ nhưng chuỗi Streak thăng hoa sẽ không đứt đoạn đâu! 🔥"
+                      "{nudgeText || "Nam ơi, tối nay cậu đã dành ra 10 phút đọc chưa? Hãy lật Sách Của Cậu, rải trí tuệ lên các trang sách nhé! 🔥"}"
                     </p>
-                    <span className="block text-[8px] text-white/40 mt-1 uppercase font-bold tracking-widest">Auto-Nudge: Gửi theo Ngữ Cảnh</span>
+                    <span className="block text-[8px] text-white/40 mt-1 uppercase font-bold tracking-widest">Auto-Nudge: Gửi cá nhân hóa từ AI</span>
                   </div>
                 </div>
               </div>
@@ -790,6 +953,119 @@ export default function App() {
             />
           )}
 
+          {activeTab === "settings" && (
+            <div className="p-6 bg-white border border-stone-200 rounded-2xl space-y-6 shadow-sm">
+              <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2">
+                ⚙️ Cấu hình & Hồ sơ cá nhân
+              </h3>
+              
+              {/* Settings Form */}
+              <div className="space-y-4 text-xs font-semibold text-stone-650">
+                <div className="space-y-1">
+                  <label className="block text-stone-500">Tên của cậu</label>
+                  <input
+                    type="text"
+                    value={profile.name}
+                    onChange={(e) => updateProfile({ ...profile, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-stone-500">Trình độ đọc hiểu & vốn từ</label>
+                    <select
+                      value={profile.vocabularyLevel}
+                      onChange={(e) => updateProfile({ ...profile, vocabularyLevel: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    >
+                      <option value="Sơ cấp">Cơ bản / Sơ cấp</option>
+                      <option value="Trung cấp">Trung bình / Trung cấp</option>
+                      <option value="Cao cấp">Nâng cao / Uyên bác</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-stone-500">Sở thích & Lĩnh vực quan tâm</label>
+                    <input
+                      type="text"
+                      value={profile.interests}
+                      onChange={(e) => updateProfile({ ...profile, interests: e.target.value })}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      placeholder="Tâm lý, Văn học, Khoa học..."
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-stone-500">Mục tiêu đọc sách của cậu</label>
+                  <input
+                    type="text"
+                    value={profile.goals}
+                    onChange={(e) => updateProfile({ ...profile, goals: e.target.value })}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    placeholder="Mục tiêu hàng ngày..."
+                  />
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-stone-100">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-stone-500">Gemini API Key của cậu</label>
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-amber-700 hover:underline"
+                    >
+                      Lấy Key tại Google AI Studio ↗
+                    </a>
+                  </div>
+                  <input
+                    type="password"
+                    value={profile.customApiKey || ""}
+                    onChange={(e) => {
+                      const newKey = e.target.value;
+                      updateProfile({ ...profile, customApiKey: newKey });
+                      // update health badge dynamically
+                      setApiHealth(prev => ({ ...prev, hasApiKey: !!newKey || prev.hasApiKey }));
+                    }}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    placeholder="Dán API Key của cậu để kích hoạt AI Mentor ở đây..."
+                  />
+                  <p className="text-[10px] text-stone-400 font-medium leading-relaxed">
+                    💡 Key được lưu trực tiếp trên trình duyệt cá nhân của cậu, không được gửi đi đâu ngoại trừ gửi qua HTTP header lên server để gọi Gemini API.
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-stone-100 flex justify-between gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm("Cậu có chắc chắn muốn RESET toàn bộ tiến độ, kệ sách và huy chương của mình không?")) {
+                        localStorage.removeItem("ai_reading_mentor_profile");
+                        window.location.reload();
+                      }
+                    }}
+                    className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl text-xs transition cursor-pointer"
+                  >
+                    Reset toàn bộ dữ liệu
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      alert("Đã lưu cấu hình thành công!");
+                      setActiveTab("dashboard");
+                    }}
+                    className="px-6 py-2 bg-stone-900 text-white font-bold rounded-xl text-xs hover:bg-stone-800 transition cursor-pointer"
+                  >
+                    Xác nhận và Quay lại
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </section>
 
       </main>
@@ -799,6 +1075,56 @@ export default function App() {
         <p>© 2026 AI Reading Mentor — Kết hợp giữa thuyết Kiến tạo Giáo dục & Thuyết Cú Hích cho Học sinh THPT Việt Nam.</p>
         <p className="mt-1 text-[10px] text-amber-600 font-semibold uppercase tracking-wider">Cần Mẫn Độc Lập — Trí Tuệ Thăng Hoa</p>
       </footer>
+
+      {/* Celebration Modal Overlay */}
+      {celebration && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-amber-200 shadow-2xl text-center space-y-6 transform scale-100 transition-all duration-300">
+            <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-50 text-amber-600 mb-2 border border-amber-200">
+              <span className="text-5xl animate-bounce">
+                {celebration.type === "book" ? "🏆" : "🔥"}
+              </span>
+              <div className="absolute inset-0 rounded-full border-4 border-dashed border-amber-400 animate-spin" style={{ animationDuration: "12s" }} />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-extrabold text-stone-850">
+                {celebration.type === "book" ? "BẠN ĐÃ CHINH PHỤC THÀNH CÔNG!" : "HOÀN THÀNH PHIÊN ĐỌC!"}
+              </h3>
+              <p className="text-sm font-bold text-amber-700 italic">
+                "{celebration.bookTitle}"
+              </p>
+              <p className="text-xs text-stone-500 font-semibold px-4 leading-relaxed">
+                {celebration.type === "book" 
+                  ? "Tuyệt vời đỉnh chóp! Cậu đã hoàn thành 100% các cột mốc của cuốn sách này. Một huy chương mới và lượng lớn tri thức đã được ghi nhận!" 
+                  : "Mục tiêu siêu nhỏ hôm nay đã hoàn thành xuất sắc! Cậu được cộng +20 XP cơ bản và +15 XP kỹ năng. Sẵn sàng chat với Socratic Mentor chưa?"}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setCelebration(null);
+                  if (celebration.type === "session") {
+                    setActiveTab("chat");
+                  } else {
+                    setActiveTab("dashboard");
+                  }
+                }}
+                className="py-3 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-xl shadow-lg shadow-amber-600/25 transition cursor-pointer text-xs uppercase tracking-wider"
+              >
+                {celebration.type === "session" ? "Trò chuyện Socratic ngay nhen 💬" : "Xem Bản đồ Tri thức 🗺️"}
+              </button>
+              <button
+                onClick={() => setCelebration(null)}
+                className="text-stone-400 hover:text-stone-600 font-bold text-[10px] py-1"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

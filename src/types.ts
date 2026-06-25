@@ -60,6 +60,7 @@ export interface UserProfile {
   activeBookId: string | null;
   books: Book[];
   badges: Badge[];
+  customApiKey?: string;
 }
 
 export interface Nudge {

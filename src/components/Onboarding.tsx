@@ -3,7 +3,7 @@ import { Compass, BookOpen, GraduationCap, Sparkles } from "lucide-react";
 import { UserProfile, Book } from "../types";
 
 interface OnboardingProps {
-  onComplete: (name: string, interests: string, vocab: "Sơ cấp" | "Trung cấp" | "Cao cấp", goals: string, recommended: Book[]) => void;
+  onComplete: (name: string, interests: string, vocab: "Sơ cấp" | "Trung cấp" | "Cao cấp", goals: string, recommended: Book[], customApiKey?: string) => void;
 }
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
@@ -11,6 +11,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [vocabLevel, setVocabLevel] = useState<"Sơ cấp" | "Trung cấp" | "Cao cấp">("Trung cấp");
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,11 +54,16 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     const goalsString = selectedGoals.length > 0 ? selectedGoals.join(". ") : "Đọc hằng ngày";
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      if (apiKey.trim()) {
+        headers["x-api-key"] = apiKey.trim();
+      }
+
       const response = await fetch("/api/mentor/recommend", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers,
         body: JSON.stringify({
           interests: interestsString,
           vocabularyLevel: vocabLevel,
@@ -100,13 +106,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         ]
       }));
 
-      onComplete(name, interestsString, vocabLevel, goalsString, serverBooks);
+      onComplete(name, interestsString, vocabLevel, goalsString, serverBooks, apiKey.trim() || undefined);
     } catch (err: any) {
       console.error(err);
       setError("AI tạm thời bận nghiên cứu tài liệu. Chúng mình dùng dữ liệu đề xuất mặc định cực chất nhé!");
       // Fallback in case of API issues to guarantee seamless UX
       setTimeout(() => {
-        onComplete(name, interestsString, vocabLevel, goalsString, []);
+        onComplete(name, interestsString, vocabLevel, goalsString, [], apiKey.trim() || undefined);
       }, 2000);
     } finally {
       setLoading(false);
@@ -137,6 +143,21 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               required
             />
           </div>
+        </div>
+
+        {/* API Key input */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="block text-sm font-semibold text-stone-700">Gemini API Key (Tùy chọn)</label>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 hover:underline">Lấy Key tại Google AI Studio ↗</a>
+          </div>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white text-stone-850 font-mono text-xs"
+            placeholder="Nếu máy chủ chưa cấu hình API Key, hãy dán Key của cậu ở đây..."
+          />
         </div>
 
         {/* Interests selection */}

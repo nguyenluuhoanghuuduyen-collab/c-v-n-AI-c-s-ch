@@ -20,6 +20,66 @@ export default function MentorChat({
   const [inputText, setInputText] = useState("");
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
+  const renderFormattedMessage = (content: string) => {
+    // Check if the content has the numbered sections from the Socratic template
+    const hasSectionMarkers = /^[1-4]\.\s+|\b[1-4]\.\s+\*\*/.test(content) || content.includes(" lời chào") || content.includes(" Lời chào") || content.includes("1. **");
+    if (!hasSectionMarkers) {
+      return <div className="whitespace-pre-wrap leading-relaxed">{content}</div>;
+    }
+
+    // Split by numbered sections like 1., 2., 3., 4.
+    const sections = content.split(/(?=\b[1-4]\.\s+(?:\*\*|)|(?:\*\*|)[1-4]\.\s+)/);
+    
+    return (
+      <div className="space-y-3 my-1">
+        {sections.map((sec, idx) => {
+          const trimmed = sec.trim();
+          if (!trimmed) return null;
+
+          let sectionClass = "p-3 bg-stone-50 border border-stone-150 rounded-xl text-stone-750";
+          let label = "";
+          let emoji = "ℹ️";
+
+          if (trimmed.startsWith("1.") || trimmed.toLowerCase().includes("lời chào") || trimmed.toLowerCase().includes("khích lệ")) {
+            sectionClass = "p-3.5 bg-amber-50/50 border border-amber-200/40 rounded-xl text-stone-800 leading-relaxed font-medium";
+            label = "Lời Chào & Khích Lệ";
+            emoji = "✨";
+          } else if (trimmed.startsWith("2.") || trimmed.toLowerCase().includes("socratic") || trimmed.toLowerCase().includes("tương tác")) {
+            sectionClass = "p-4.5 bg-white border border-stone-200 rounded-xl text-stone-850 font-bold text-[12.5px] leading-relaxed shadow-sm";
+            label = "Thử Thách Socratic (Active Recall)";
+            emoji = "🧠";
+          } else if (trimmed.startsWith("3.") || trimmed.toLowerCase().includes("tăng trưởng") || trimmed.toLowerCase().includes("ghi nhận")) {
+            sectionClass = "p-3 bg-indigo-50/50 border border-indigo-200/30 rounded-xl text-indigo-950 font-bold text-[11px]";
+            label = "Ghi Nhận Tăng Trưởng";
+            emoji = "🔥";
+          } else if (trimmed.startsWith("4.") || trimmed.toLowerCase().includes("cú hích") || trimmed.toLowerCase().includes("nudge")) {
+            sectionClass = "p-3 bg-stone-900 border border-stone-900 text-stone-100 rounded-xl italic leading-relaxed text-[11px] font-medium";
+            label = "Cú Hích Thúc Đẩy";
+            emoji = "🚀";
+          }
+
+          // Strip headers from content body
+          const bodyText = trimmed
+            .replace(/^[1-4]\.\s*(\*\*)?.*?\1(\s*:)?\s*/, "") // remove "1. **Header**:"
+            .replace(/^\s*\*\*.*?\*\*\s*(\s*:)?\s*/, "") // remove remaining **Header**
+            .trim();
+
+          if (!bodyText) return null;
+
+          return (
+            <div key={idx} className={`${sectionClass} border transition-all hover:border-amber-300/30 duration-200`}>
+              <div className="text-[9px] uppercase font-extrabold tracking-wider text-stone-400 mb-1.5 flex items-center gap-1 select-none">
+                <span>{emoji}</span>
+                <span>{label}</span>
+              </div>
+              <div className="whitespace-pre-wrap">{bodyText}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeBook.chatHistory, loading]);
@@ -107,7 +167,6 @@ export default function MentorChat({
                 {isModel ? <Brain className="w-4 h-4" /> : <User className="w-4 h-4" />}
               </div>
 
-              {/* Bubble Body */}
               <div
                 className={`p-4 rounded-2xl text-xs leading-relaxed font-sans ${
                   isModel
@@ -115,8 +174,7 @@ export default function MentorChat({
                     : "bg-stone-900 text-stone-50 rounded-tr-none"
                 }`}
               >
-                {/* Parse Vietnamese formatting dynamically if necessary, here we render directly with clean linebreaks */}
-                <div className="whitespace-pre-wrap">{message.content}</div>
+                {isModel ? renderFormattedMessage(message.content) : <div className="whitespace-pre-wrap">{message.content}</div>}
                 
                 <span className="block text-[8px] text-stone-400 mt-2 text-right">
                   {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

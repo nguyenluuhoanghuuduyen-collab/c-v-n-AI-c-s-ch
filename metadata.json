@@ -1,0 +1,6 @@
+{
+  "name": "AI Reading Mentor",
+  "description": "Người đồng hành đọc sách thông minh dành cho học sinh, giúp hình thành thói quen đọc bền vững, cá nhân hóa lộ trình và phát triển tư duy phản biện.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

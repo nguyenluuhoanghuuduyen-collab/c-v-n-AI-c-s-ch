@@ -57,9 +57,9 @@ export default function BookSession({ book, onFinishSession }: BookSessionProps)
 
   // Suggested Socratic seed links
   const defaultNotePrompts = [
-    "📌 'Chi tiết/Khái niệm tâm đắc nhất của tớ là...'",
-    "🤔 'Xung đột xảy ra khi nhân vật... làm tớ mâu thuẫn là...'",
-    "💡 'Ứng dụng điều này vào các môn học hoặc thực tế trường học có thể là...'"
+    { label: "📌 Ý tưởng tâm đắc", text: "Chi tiết/Khái niệm tâm đắc nhất của tớ là: " },
+    { label: "🤔 Xung đột nhân vật", text: "Xung đột xảy ra khi nhân vật... làm tớ suy nghĩ là: " },
+    { label: "💡 Ứng dụng thực tế", text: "Ứng dụng điều này vào bối cảnh học tập/đời sống là: " }
   ];
 
   return (
@@ -112,7 +112,7 @@ export default function BookSession({ book, onFinishSession }: BookSessionProps)
                 className="transition-all duration-300"
               />
             </svg>
-            <div className="text-center">
+            <div className={`text-center ${timerActive ? "animate-pulse" : ""}`}>
               <span className="block text-4xl font-mono font-bold text-stone-850">{formatTime(secondsElapsed)}</span>
               <span className="text-[10px] font-semibold text-stone-400 uppercase">
                 {timerActive ? "Đang tập trung" : "Tạm dừng"}
@@ -170,10 +170,10 @@ export default function BookSession({ book, onFinishSession }: BookSessionProps)
                 <button
                   type="button"
                   key={index}
-                  onClick={() => setNotes(pt.slice(3) + " ")}
-                  className="px-2 py-1 bg-amber-50 text-[10px] font-semibold text-amber-800 rounded-lg hover:bg-amber-100 border border-amber-100/50 transition"
+                  onClick={() => setNotes(pt.text)}
+                  className="px-2.5 py-1.5 bg-white hover:bg-amber-50 text-[10px] font-bold text-stone-600 hover:text-amber-800 rounded-xl border border-stone-200 hover:border-amber-300 transition duration-150 shadow-sm cursor-pointer"
                 >
-                  {pt.split(" '")[0]}
+                  {pt.label}
                 </button>
               ))}
             </div>

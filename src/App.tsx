@@ -562,9 +562,7 @@ export default function App() {
           };
         }
         return b;
-      });
-
-      updateProfile({
+      });      updateProfile({
         ...profile,
         books: postChatBooks
       });
@@ -573,6 +571,96 @@ export default function App() {
     }
   };
 
+  const handleExportPDF = () => {
+    if (!activeBook) return;
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      const notesHtml = activeBook.notes.length === 0
+        ? `<p style="font-style: italic; color: #78716c;">Chưa ghi chép thu hoạch nào.</p>`
+        : activeBook.notes.map((note, idx) => `
+            <div class="note-card">
+              <div class="note-num">Phiên mục tiêu #${idx + 1}</div>
+              <div style="font-size: 13px; color: #44403c; white-space: pre-wrap;">${note}</div>
+            </div>
+          `).join("");
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Nhat Ky Doc Sach - ${activeBook.title}</title>
+            <style>
+              body { font-family: 'Segoe UI', Roboto, sans-serif; color: #292524; padding: 40px; line-height: 1.6; }
+              .header { border-bottom: 2px solid #d97706; padding-bottom: 20px; margin-bottom: 30px; }
+              .title { font-size: 24px; font-weight: bold; color: #78350f; }
+              .subtitle { font-size: 11px; text-transform: uppercase; color: #a8a29e; font-weight: bold; letter-spacing: 1px; }
+              .profile-info { display: flex; gap: 40px; margin-bottom: 30px; background: #fafaf9; padding: 20px; border-radius: 12px; border: 1px solid #e7e5e4; }
+              .info-item { display: flex; flex-direction: column; }
+              .info-label { font-size: 10px; color: #78716c; text-transform: uppercase; font-weight: bold; }
+              .info-value { font-size: 14px; font-weight: bold; color: #44403c; }
+              .section-title { font-size: 18px; font-weight: bold; border-left: 4px solid #d97706; padding-left: 10px; margin-top: 40px; margin-bottom: 20px; color: #78350f; }
+              .note-card { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid; }
+              .note-num { color: #d97706; font-weight: bold; margin-bottom: 5px; font-size: 12px; }
+              .footer { margin-top: 50px; font-size: 10px; color: #a8a29e; text-align: center; border-top: 1px solid #e7e5e4; padding-top: 20px; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+              td { padding: 8px 0; border-bottom: 1px solid #f5f5f4; font-size: 13px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="subtitle">Nhật Ký Học Thức - AI Reading Mentor</div>
+              <div class="title">Báo Cáo Kết Quả Đọc Sách</div>
+            </div>
+            
+            <div class="profile-info">
+              <div class="info-item"><span class="info-label">Học Sinh</span><span class="info-value">${profile.name}</span></div>
+              <div class="info-item"><span class="info-label">Cấp Học Thức</span><span class="info-value">Cấp ${profile.level} (${profile.studentXP} XP)</span></div>
+              <div class="info-item"><span class="info-label">Chuỗi Kỷ Luật</span><span class="info-value">${profile.streakCount} ngày</span></div>
+            </div>
+
+            <div class="section-title">Thông Tin Tác Phẩm</div>
+            <table>
+              <tr>
+                <td style="font-weight: bold; color: #78716c; width: 120px;">Tên sách:</td>
+                <td style="font-weight: bold; color: #44403c;">${activeBook.title}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; color: #78716c;">Tác giả:</td>
+                <td style="color: #44403c;">${activeBook.author}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; color: #78716c;">Thể loại:</td>
+                <td style="color: #44403c;">${activeBook.category}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; color: #78716c;">Phân khúc ZPD:</td>
+                <td style="color: #d97706; font-weight: bold;">${activeBook.zpdRating}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; color: #78716c;">Tiến độ đọc:</td>
+                <td style="color: #44403c;">Đã hoàn thành ${activeBook.sessionsCompleted}/${activeBook.microGoal.totalSessions} phiên mục tiêu (${activeBook.microGoal.pagesPerSession} trang/phiên)</td>
+              </tr>
+            </table>
+
+            <div class="section-title">Sổ Tay Ghi Chép & Thu Hoạch Socratic</div>
+            ${notesHtml}
+
+            <div class="footer">
+              <p>© 2026 AI Reading Mentor — Kết hợp thuyết kiến tạo giáo dục</p>
+              <p style="font-weight: bold; text-transform: uppercase; color: #d97706; letter-spacing: 0.5px;">Cần Mẫn Độc Lập — Trí Tuệ Thăng Hoa</p>
+            </div>
+            
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
   // Filter book search query
   const filteredBooks = profile.books.filter((b) =>
     b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -918,10 +1006,21 @@ export default function App() {
               {/* Saved Notes History overview for active book */}
               {activeBook && (
                 <div className="p-6 bg-white border border-stone-250 rounded-2xl space-y-4">
-                  <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2">
-                    <BookMarked className="w-4.5 h-4.5 text-amber-600" />
-                    Lịch Sử Ghi Chép & Thu Hoạch ({activeBook.notes.length})
-                  </h3>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-1">
+                    <h3 className="text-sm font-bold text-stone-800 flex items-center gap-2">
+                      <BookMarked className="w-4.5 h-4.5 text-amber-600" />
+                      Lịch Sử Ghi Chép & Thu Hoạch ({activeBook.notes.length})
+                    </h3>
+                    {activeBook.notes.length > 0 && (
+                      <button
+                        onClick={handleExportPDF}
+                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-250 text-amber-800 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                        title="Xuất file PDF báo cáo kết quả đọc"
+                      >
+                        📄 Xuất Báo Cáo PDF
+                      </button>
+                    )}
+                  </div>
                   {activeBook.notes.length === 0 ? (
                     <p className="text-xs text-stone-400 italic">Chưa phát sinh phiên ghi chép nào. Cậu hãy lật Bàn Đọc Sách bấm timer luyện đọc để ghi nhận thành tích nhen!</p>
                   ) : (

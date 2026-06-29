@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Play, Pause, Square, FileText, CheckCircle2, Bookmark, Timer, AlertCircle } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Play, Pause, Square, FileText, CheckCircle2, Bookmark, Timer, AlertCircle, Volume2, Music } from "lucide-react";
 import { Book } from "../types";
 
 interface BookSessionProps {
@@ -12,6 +12,32 @@ export default function BookSession({ book, onFinishSession }: BookSessionProps)
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [notes, setNotes] = useState("");
   const [errorInput, setErrorInput] = useState("");
+
+  // Focus music tracks
+  const tracks = [
+    { name: "☕ Lofi Học Đường", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+    { name: "🌧️ Tiếng Mưa Rơi Rào", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+    { name: "🌲 Rừng Gió Rào Rạt", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" }
+  ];
+
+  const [audioTrack, setAudioTrack] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.5);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.play().catch(e => console.log("Audio play failed:", e));
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isPlaying, audioTrack]);
 
   useEffect(() => {
     let interval: any = null;
@@ -151,6 +177,67 @@ export default function BookSession({ book, onFinishSession }: BookSessionProps)
             >
               <Square className="w-3.5 h-3.5" />
             </button>
+          </div>
+
+          {/* Divider */}
+          <div className="w-full h-[1px] bg-stone-100 my-4" />
+
+          {/* White Noise Player Widget */}
+          <div className="w-full space-y-3 text-left">
+            <div className="flex items-center gap-2">
+              <Music className="w-4 h-4 text-amber-600 animate-bounce" />
+              <span className="text-xs uppercase font-extrabold tracking-wider text-stone-600">Nhạc Nền Tập Trung</span>
+            </div>
+            
+            <audio
+              ref={audioRef}
+              src={tracks[audioTrack].url}
+              loop
+            />
+
+            <div className="flex flex-col gap-2 bg-stone-50 p-3 rounded-xl border border-stone-200/50 w-full">
+              <div className="flex items-center justify-between gap-2">
+                <select
+                  value={audioTrack}
+                  onChange={(e) => {
+                    const idx = Number(e.target.value);
+                    setAudioTrack(idx);
+                    setIsPlaying(true); // Auto-play on switch
+                  }}
+                  className="bg-white border border-stone-200 text-[11px] font-semibold text-stone-700 px-2 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 flex-1 max-w-[150px]"
+                >
+                  {tracks.map((t, idx) => (
+                    <option key={idx} value={idx}>{t.name}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-[10px] text-white cursor-pointer transition ${
+                    isPlaying ? "bg-amber-600 hover:bg-amber-700" : "bg-stone-800 hover:bg-stone-900"
+                  }`}
+                >
+                  {isPlaying ? "Tạm Dừng" : "Phát Nhạc"}
+                </button>
+              </div>
+
+              {/* Volume Slider */}
+              <div className="flex items-center gap-2 pt-1 w-full">
+                <Volume2 className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  className="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-amber-600 flex-1"
+                />
+                <span className="text-[9px] font-mono text-stone-400 w-6 text-right shrink-0">
+                  {Math.round(volume * 100)}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

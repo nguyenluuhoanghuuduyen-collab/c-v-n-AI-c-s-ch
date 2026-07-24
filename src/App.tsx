@@ -112,7 +112,9 @@ export default function App() {
             goals: profile.goals,
             activeBookTitle: activeBook?.title,
             activeBookAuthor: activeBook?.author,
-            streakCount: profile.streakCount
+            streakCount: profile.streakCount,
+            nudgeGroup: profile.nudgeGroup || "default",
+            dailyTargetMinutes: profile.dailyTargetMinutes || 15
           })
         });
         if (response.ok) {
@@ -133,7 +135,7 @@ export default function App() {
     };
 
     fetchNudge();
-  }, [profile?.activeBookId, profile?.streakCount, profile?.name]);
+  }, [profile?.activeBookId, profile?.streakCount, profile?.name, profile?.nudgeGroup, profile?.dailyTargetMinutes]);
 
   if (!profile) return null;
 
@@ -999,6 +1001,74 @@ export default function App() {
                     <span className="block text-[8px] text-white/40 mt-1 uppercase font-bold tracking-widest">Auto-Nudge: Gửi cá nhân hóa từ AI</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Nudge Experiment Control Panel */}
+              <div className="p-5 bg-white border border-stone-200 rounded-2xl space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
+                    ⚙️ Thiết Lập Thực Nghiệm Cú Hích (Nudges)
+                  </h4>
+                  <span className="text-[9px] px-2 py-0.5 bg-teal-50 text-teal-700 border border-teal-200 font-bold rounded-full">
+                    Behavioral Science Lab
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Select Nudge Group */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 block">Khuôn mẫu tâm lý (Nudge Model)</label>
+                    <select
+                      value={profile.nudgeGroup || "default"}
+                      onChange={(e) => {
+                        const val = e.target.value as any;
+                        const updated = {
+                          ...profile,
+                          nudgeGroup: val
+                        };
+                        updateProfile(updated);
+                      }}
+                      className="w-full bg-stone-50 border border-stone-200 text-xs font-semibold text-stone-700 px-2 py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    >
+                      <option value="default">Mặc định (AI Tự do)</option>
+                      <option value="social">Nudge 1 — Định chuẩn xã hội (Social Proof)</option>
+                      <option value="commitment">Nudge 2 — Cam kết trước (Pre-commitment)</option>
+                      <option value="framing">Nudge 3 — Khung nhận thức (Framing / Loss Aversion)</option>
+                    </select>
+                  </div>
+
+                  {/* Pre-commitment target config */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-stone-500 block">
+                      {profile.nudgeGroup === "commitment" ? "✏️ Thiết lập Cam kết Đọc hàng ngày" : "Định mức đọc hàng ngày (Phút)"}
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="180"
+                        value={profile.dailyTargetMinutes || 15}
+                        onChange={(e) => {
+                          const val = Math.max(1, Number(e.target.value));
+                          updateProfile({
+                            ...profile,
+                            dailyTargetMinutes: val
+                          });
+                        }}
+                        className="w-20 bg-stone-50 border border-stone-200 text-xs font-mono font-bold text-stone-700 px-2 py-1.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                      <span className="text-xs text-stone-500 self-center">phút / ngày</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Explanation text based on selected model */}
+                <p className="text-[10px] text-stone-500 italic leading-relaxed pt-1.5 border-t border-stone-100">
+                  {profile.nudgeGroup === "social" && "💡 Thuyết Định Chuẩn Xã Hội (Social Proof): Sử dụng định chuẩn đồng trang lứa để kích hoạt động lực thi đua lành mạnh, giúp học sinh duy trì tiến độ đọc tương đương bạn học khác."}
+                  {profile.nudgeGroup === "commitment" && "💡 Thuyết Cam Kết Trước (Pre-commitment): Đưa ra lời nhắc nhở đối chiếu với mục tiêu thời gian đọc cụ thể mà học sinh đã tự cam kết, gia tăng trách nhiệm bản thân."}
+                  {profile.nudgeGroup === "framing" && "💡 Thuyết Khung Nhận Thức (Framing / Loss Aversion): Đóng khung thông tin tích cực về tiến độ hoàn thành chuỗi thói quen (Streak) để kích hoạt tâm lý bảo toàn thành tựu."}
+                  {(profile.nudgeGroup === "default" || !profile.nudgeGroup) && "💡 Hệ thống AI Mentor phân tích thời gian và bối cảnh tự do để đưa ra những lời khích lệ cá nhân hóa đa dạng nhất."}
+                </p>
               </div>
 
               {/* Dynamic Socratic Knowledge map dashboard */}

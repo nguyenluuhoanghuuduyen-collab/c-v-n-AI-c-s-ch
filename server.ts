@@ -353,8 +353,16 @@ Tuyệt đối chỉ trả về JSON thuần túy, không có thẻ bao ngoài M
   }
 });
 
+// Export the app instance for Vercel serverless functions
+export default app;
+
 // Serve frontend static assets & manage modes
 const startServer = async () => {
+  if (process.env.VERCEL === "1") {
+    // Vercel serverless environment: do not start dev server or listen to port
+    return;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     // Vite middleware in dev mode
     const vite = await createViteServer({

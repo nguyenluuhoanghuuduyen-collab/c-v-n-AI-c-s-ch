@@ -114,7 +114,9 @@ export default function App() {
             activeBookAuthor: activeBook?.author,
             streakCount: profile.streakCount,
             nudgeGroup: profile.nudgeGroup || "default",
-            dailyTargetMinutes: profile.dailyTargetMinutes || 15
+            dailyTargetMinutes: profile.dailyTargetMinutes || 15,
+            dailyCommitmentTime: profile.dailyCommitmentTime || "21:00",
+            dailyCommitmentContext: profile.dailyCommitmentContext || "Tại bàn học"
           })
         });
         if (response.ok) {
@@ -135,7 +137,7 @@ export default function App() {
     };
 
     fetchNudge();
-  }, [profile?.activeBookId, profile?.streakCount, profile?.name, profile?.nudgeGroup, profile?.dailyTargetMinutes]);
+  }, [profile?.activeBookId, profile?.streakCount, profile?.name, profile?.nudgeGroup, profile?.dailyTargetMinutes, profile?.dailyCommitmentTime, profile?.dailyCommitmentContext]);
 
   if (!profile) return null;
 
@@ -989,16 +991,39 @@ export default function App() {
                 <div className="absolute right-0 top-0 translate-y-1 translate-x-2 text-white/5 font-bold text-4xl">
                   NUDGES
                 </div>
-                <div className="flex gap-4 items-start">
+                <div className="flex gap-4 items-start relative z-10">
                   <div className="p-2 bg-amber-500 rounded-full text-stone-900 shrink-0">
                     <Sparkles className="w-5 h-5 animate-pulse" />
                   </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Cú Hích Thúc Đẩy Học Tập</span>
-                    <p className="text-xs font-medium leading-relaxed italic">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Cú Hích Thúc Đẩy Học Tập</span>
+                      {profile.lastActiveDate !== new Date().toDateString() ? (
+                        <span className="text-[8px] bg-red-955 text-red-400 border border-red-900 font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+                          ⚠️ Chuỗi {profile.streakCount} ngày có nguy cơ đóng băng!
+                        </span>
+                      ) : (
+                        <span className="text-[8px] bg-emerald-955 text-emerald-400 border border-emerald-900 font-extrabold px-2 py-0.5 rounded-full">
+                          🔥 Đã bảo toàn chuỗi {profile.streakCount} ngày!
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs font-medium leading-relaxed italic pt-1">
                       "{nudgeText || "Nam ơi, tối nay cậu đã dành ra 10 phút đọc chưa? Hãy lật Sách Của Cậu, rải trí tuệ lên các trang sách nhé! 🔥"}"
                     </p>
-                    <span className="block text-[8px] text-white/40 mt-1 uppercase font-bold tracking-widest">Auto-Nudge: Gửi cá nhân hóa từ AI</span>
+                    
+                    <div className="flex items-center justify-between gap-4 pt-2">
+                      <span className="block text-[8px] text-white/40 uppercase font-bold tracking-widest">Auto-Nudge: Gửi cá nhân hóa từ AI</span>
+                      {activeBook && profile.lastActiveDate !== new Date().toDateString() && (
+                        <button
+                          onClick={() => setActiveTab("active-session")}
+                          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-stone-900 text-[9px] font-extrabold rounded-lg transition duration-150 flex items-center gap-1 cursor-pointer shadow-sm"
+                        >
+                          📖 Đọc sách ngay &rarr;
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1061,6 +1086,52 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {profile.nudgeGroup === "commitment" && (
+                  <div className="pt-3 border-t border-stone-100 space-y-3">
+                    <span className="text-[10px] font-bold text-stone-600 block">
+                      🎯 Kế hoạch hành động "If-Then" (Cam kết Không gian & Thời gian)
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Commitment Time picker */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-stone-400 block">Thời điểm đọc sách cam kết</label>
+                        <input
+                          type="time"
+                          value={profile.dailyCommitmentTime || "21:00"}
+                          onChange={(e) => {
+                            updateProfile({
+                              ...profile,
+                              dailyCommitmentTime: e.target.value
+                            });
+                          }}
+                          className="w-full bg-stone-50 border border-stone-200 text-xs font-mono font-bold text-stone-700 px-2 py-1.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      {/* Commitment Context selector */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-stone-400 block">Bối cảnh/Không gian đọc cam kết</label>
+                        <select
+                          value={profile.dailyCommitmentContext || "Tại bàn học"}
+                          onChange={(e) => {
+                            updateProfile({
+                              ...profile,
+                              dailyCommitmentContext: e.target.value
+                            });
+                          }}
+                          className="w-full bg-stone-50 border border-stone-200 text-xs font-semibold text-stone-700 px-2 py-1.5 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        >
+                          <option value="Tại bàn học">🏫 Tại bàn học tập trung</option>
+                          <option value="Trên giường ngủ">🛏️ Trên giường ngủ thư giãn</option>
+                          <option value="Trong phòng khách">🛋️ Ở phòng khách gia đình</option>
+                          <option value="Ở thư viện trường">🏫 Trong thư viện yên tĩnh</option>
+                          <option value="Nghe nhạc tai nghe">🎧 Góc riêng với tai nghe</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Explanation text based on selected model */}
                 <p className="text-[10px] text-stone-500 italic leading-relaxed pt-1.5 border-t border-stone-100">

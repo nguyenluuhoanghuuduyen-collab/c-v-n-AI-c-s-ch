@@ -166,7 +166,9 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   },
   activeBookId: null,
   books: [],
-  badges: INITIAL_BADGES
+  badges: INITIAL_BADGES,
+  nudgeGroup: "default",
+  dailyTargetMinutes: 15
 };
 
 export const SAMPLE_NUDGES = [

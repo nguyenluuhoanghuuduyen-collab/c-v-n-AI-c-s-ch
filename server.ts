@@ -287,7 +287,9 @@ app.post("/api/mentor/generate-nudge", async (req, res) => {
       });
     }
 
-    const { name, interests, goals, activeBookTitle, activeBookAuthor, streakCount } = req.body;
+    const { name, interests, goals, activeBookTitle, activeBookAuthor, streakCount, nudgeGroup, dailyTargetMinutes } = req.body;
+    const groupType = nudgeGroup || "default";
+    const targetMin = dailyTargetMinutes || 15;
 
     const systemInstruction = `
 Bạn là AI Reading Mentor (Người Đồng Hành Đọc Sách Thông Minh) của học sinh THPT Việt Nam (Gen Z).
@@ -299,10 +301,30 @@ Thông tin học sinh:
 - Mục tiêu: ${goals || "rèn luyện bản thân"}
 - Sách đang đọc: ${activeBookTitle ? `"${activeBookTitle}" của tác giả ${activeBookAuthor}` : "chưa chọn sách"}
 - Chuỗi streak hiện tại: ${streakCount || 0} ngày.
+- Nhóm Nudge Thực Nghiệm: ${groupType} (Mục tiêu cam kết thời gian đọc tự chọn hàng ngày: ${targetMin} phút).
 
-Yêu cầu về nội dung Nudge:
+QUY TẮC PHÂN LOẠI NHÓM NUDGE THỰC NGHIỆM:
+Bạn BẮT BUỘC phải viết nội dung Nudge theo đúng nhóm được yêu cầu dưới đây:
+
+1. Nếu Nhóm Nudge là "social" (Social Proof Nudge - Định chuẩn xã hội):
+   - Thiết kế câu kích đẩy nhấn mạnh định chuẩn xã hội/đồng trang lứa.
+   - Thể hiện tinh thần có nhiều bạn học cùng sở thích/độ tuổi cũng đang say sưa đọc sách.
+   - Lấy cảm hứng từ mẫu: "85% học sinh cùng nhóm sở thích với cậu đã đọc xong cuốn sách này trong tuần qua nhen!" hoặc tạo số liệu tương tự để thúc đẩy lòng thi đua lành mạnh.
+
+2. Nếu Nhóm Nudge là "commitment" (Pre-commitment Nudge - Cam kết trước):
+   - Nhấn mạnh vào cam kết tự thân trước đó của học sinh là đọc ít nhất ${targetMin} phút mỗi ngày.
+   - Gợi ý nhẹ nhàng nhắc nhở học sinh thực hiện đúng lời hứa và hoàn thành cam kết thời gian tự chọn đó (ví dụ: "Cậu đã hứa với lòng sẽ dành ra ${targetMin} phút mỗi ngày để đọc sách rồi nè!").
+
+3. Nếu Nhóm Nudge là "framing" (Framing Nudge - Khung nhận thức / Thúc đẩy tiến độ):
+   - Đổi góc nhìn từ tiêu cực ("Cậu chưa đọc sách hôm nay") sang tích cực, nhấn mạnh vào những gì sắp đạt được và bảo toàn thành tựu hiện có.
+   - Lấy cảm hứng từ mẫu: "Chỉ còn một chút nữa là cậu bảo vệ thành công chuỗi đọc sách liên tục ${streakCount + 1} ngày rồi đó!" để kích thích tâm lý hoàn thành mục tiêu.
+
+4. Nếu Nhóm Nudge là "default":
+   - Viết một câu nhắc nhở khích lệ tự do, thân thiện, dí dỏm của AI Mentor.
+
+Yêu cầu chung về nội dung Nudge:
 1. Thân thiện, gần gũi như một người anh/chị khóa trên, sử dụng ngôn ngữ trẻ trung, hiện đại của Gen Z một cách lịch sự, tinh tế (VD: dùng các từ như "nhen", "nè", "chứ lị", "đỉnh chóp", "cố lên", v.v., kèm emoji phong phú).
-2. Nhắc nhở nhẹ nhàng về việc đọc sách hôm nay để duy trì chuỗi Streak (hoặc bắt đầu một chuỗi mới nếu streak = 0). Nếu học sinh có sách đang đọc, hãy nhắc tên cuốn sách đó.
+2. Nhắc nhở nhẹ nhàng về việc đọc sách hôm nay. Nếu học sinh có sách đang đọc, hãy nhắc tên cuốn sách đó.
 3. Không giáo điều, không sáo rỗng. Hãy viết ngắn gọn từ 2 đến 3 câu.
 4. Trả về định dạng JSON thuần túy có dạng:
 {
@@ -313,7 +335,7 @@ Tuyệt đối chỉ trả về JSON thuần túy, không có thẻ bao ngoài M
 
     const response = await client.models.generateContent({
       model: "gemini-3.5-flash",
-      contents: "Hãy tạo một cú hích đọc sách cá nhân hóa.",
+      contents: "Hãy tạo một cú hích đọc sách cá nhân hóa theo nhóm thực nghiệm yêu cầu.",
       config: {
         systemInstruction,
         responseMimeType: "application/json",

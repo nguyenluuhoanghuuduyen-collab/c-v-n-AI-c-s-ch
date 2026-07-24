@@ -168,7 +168,9 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   books: [],
   badges: INITIAL_BADGES,
   nudgeGroup: "default",
-  dailyTargetMinutes: 15
+  dailyTargetMinutes: 15,
+  dailyCommitmentTime: "21:00",
+  dailyCommitmentContext: "Tại bàn học"
 };
 
 export const SAMPLE_NUDGES = [

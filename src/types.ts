@@ -61,6 +61,8 @@ export interface UserProfile {
   books: Book[];
   badges: Badge[];
   customApiKey?: string;
+  nudgeGroup?: "default" | "social" | "commitment" | "framing";
+  dailyTargetMinutes?: number;
 }
 
 export interface Nudge {

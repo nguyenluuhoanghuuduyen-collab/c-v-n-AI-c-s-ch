@@ -287,9 +287,11 @@ app.post("/api/mentor/generate-nudge", async (req, res) => {
       });
     }
 
-    const { name, interests, goals, activeBookTitle, activeBookAuthor, streakCount, nudgeGroup, dailyTargetMinutes } = req.body;
+    const { name, interests, goals, activeBookTitle, activeBookAuthor, streakCount, nudgeGroup, dailyTargetMinutes, dailyCommitmentTime, dailyCommitmentContext } = req.body;
     const groupType = nudgeGroup || "default";
     const targetMin = dailyTargetMinutes || 15;
+    const commitTime = dailyCommitmentTime || "21:00";
+    const commitContext = dailyCommitmentContext || "Tại bàn học";
 
     const systemInstruction = `
 Bạn là AI Reading Mentor (Người Đồng Hành Đọc Sách Thông Minh) của học sinh THPT Việt Nam (Gen Z).
@@ -301,7 +303,7 @@ Thông tin học sinh:
 - Mục tiêu: ${goals || "rèn luyện bản thân"}
 - Sách đang đọc: ${activeBookTitle ? `"${activeBookTitle}" của tác giả ${activeBookAuthor}` : "chưa chọn sách"}
 - Chuỗi streak hiện tại: ${streakCount || 0} ngày.
-- Nhóm Nudge Thực Nghiệm: ${groupType} (Mục tiêu cam kết thời gian đọc tự chọn hàng ngày: ${targetMin} phút).
+- Nhóm Nudge Thực Nghiệm: ${groupType} (Mục tiêu cam kết: đọc ${targetMin} phút vào lúc ${commitTime} tại địa điểm/bối cảnh "${commitContext}").
 
 QUY TẮC PHÂN LOẠI NHÓM NUDGE THỰC NGHIỆM:
 Bạn BẮT BUỘC phải viết nội dung Nudge theo đúng nhóm được yêu cầu dưới đây:
@@ -312,8 +314,8 @@ Bạn BẮT BUỘC phải viết nội dung Nudge theo đúng nhóm được yê
    - Lấy cảm hứng từ mẫu: "85% học sinh cùng nhóm sở thích với cậu đã đọc xong cuốn sách này trong tuần qua nhen!" hoặc tạo số liệu tương tự để thúc đẩy lòng thi đua lành mạnh.
 
 2. Nếu Nhóm Nudge là "commitment" (Pre-commitment Nudge - Cam kết trước):
-   - Nhấn mạnh vào cam kết tự thân trước đó của học sinh là đọc ít nhất ${targetMin} phút mỗi ngày.
-   - Gợi ý nhẹ nhàng nhắc nhở học sinh thực hiện đúng lời hứa và hoàn thành cam kết thời gian tự chọn đó (ví dụ: "Cậu đã hứa với lòng sẽ dành ra ${targetMin} phút mỗi ngày để đọc sách rồi nè!").
+   - Nhấn mạnh vào cam kết tự thân trước đó của học sinh là đọc ít nhất ${targetMin} phút vào lúc ${commitTime} tại địa điểm/bối cảnh "${commitContext}".
+   - Gợi ý nhẹ nhàng nhắc nhở học sinh thực hiện đúng lời hứa và hoàn thành cam kết thời gian và không gian tự chọn đó (ví dụ: "Cậu đã hứa với lòng sẽ dành ra ${targetMin} phút vào lúc ${commitTime} tại [${commitContext}] để đọc sách rồi nè! Mở sách ra thôi nhen!").
 
 3. Nếu Nhóm Nudge là "framing" (Framing Nudge - Khung nhận thức / Thúc đẩy tiến độ):
    - Đổi góc nhìn từ tiêu cực ("Cậu chưa đọc sách hôm nay") sang tích cực, nhấn mạnh vào những gì sắp đạt được và bảo toàn thành tựu hiện có.

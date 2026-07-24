@@ -63,6 +63,8 @@ export interface UserProfile {
   customApiKey?: string;
   nudgeGroup?: "default" | "social" | "commitment" | "framing";
   dailyTargetMinutes?: number;
+  dailyCommitmentTime?: string;
+  dailyCommitmentContext?: string;
 }
 
 export interface Nudge {

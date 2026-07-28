@@ -500,7 +500,12 @@ export default function App() {
       });
 
       if (!response.ok) {
-        throw new Error("Không thể kết nối đến AI Reading Mentor.");
+        let errMsg = "Không thể kết nối đến AI Reading Mentor.";
+        try {
+          const errData = await response.json();
+          if (errData.error) errMsg = errData.error;
+        } catch {}
+        throw new Error(errMsg);
       }
 
       const data = await response.json();
@@ -554,7 +559,7 @@ export default function App() {
       const offlineMsg: ChatMessage = {
         id: `chat-fail-${Date.now()}`,
         role: "model",
-        content: "😅 Chào cậu nhen! Trí tuệ AI Mentor đang bận tiếp thu kiến thức ngoài biển khơi chút xíu. Nhưng đừng lo, sổ tay tập trung thâu đêm của cậu đã được ghi nhận tuyệt vời vào Bản Đồ Tri Thức cục bộ. Hôm nay cậu đã làm xuất sắc rồi! 🌟 [Hẹn gặp lại cậu vào phiên đọc tối mai nhe!]",
+        content: `😅 [Lỗi kết nối AI]: ${e.message || "Đang bận hoặc kết nối gián đoạn"}. Bản đồ Tri Thức cục bộ vẫn ghi nhận an toàn. Hãy kiểm tra lại khóa API trong Settings của cậu nhen!`,
         timestamp: new Date().toISOString()
       };
 

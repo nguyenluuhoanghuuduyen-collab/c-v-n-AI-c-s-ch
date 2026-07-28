@@ -137,7 +137,7 @@ export default function App() {
     };
 
     fetchNudge();
-  }, [profile?.activeBookId, profile?.streakCount, profile?.name, profile?.nudgeGroup, profile?.dailyTargetMinutes, profile?.dailyCommitmentTime, profile?.dailyCommitmentContext]);
+  }, [profile?.activeBookId, profile?.nudgeGroup]);
 
   if (!profile) return null;
 

@@ -96,7 +96,7 @@ Tuyệt đối chỉ trả về JSON thuần túy, không có thẻ bao ngoài M
 `;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash",
       contents: "Hãy đề xuất sách phù hợp với thông tin người dùng.",
       config: {
         systemInstruction,
@@ -193,7 +193,7 @@ Hãy tạo ra một cuộc hội thoại sinh động, hấp dẫn, đậm chấ
     });
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash",
       contents: formattedContents,
       config: {
         systemInstruction,
@@ -260,7 +260,7 @@ Tuyệt đối chỉ trả về JSON thuần túy, không có thẻ bao ngoài M
 `;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash",
       contents: "Hãy phân tích cuốn sách và trả về thông tin chi tiết.",
       config: {
         systemInstruction,
@@ -336,7 +336,7 @@ Tuyệt đối chỉ trả về JSON thuần túy, không có thẻ bao ngoài M
 `;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash",
       contents: "Hãy tạo một cú hích đọc sách cá nhân hóa theo nhóm thực nghiệm yêu cầu.",
       config: {
         systemInstruction,

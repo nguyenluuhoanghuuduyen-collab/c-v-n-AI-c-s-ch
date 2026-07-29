@@ -25,7 +25,7 @@ const ai = apiKey
 
 // Helper to get Gemini client, supporting custom user API Key sent in headers
 const getAiClient = (req: express.Request) => {
-  const customApiKey = req.headers["x-api-key"] as string;
+  const customApiKey = (req.headers["x-api-key"] as string) || req.body.customApiKey;
   if (customApiKey) {
     return new GoogleGenAI({
       apiKey: customApiKey,

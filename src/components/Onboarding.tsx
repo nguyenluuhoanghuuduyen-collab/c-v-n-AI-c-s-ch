@@ -68,7 +68,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           interests: interestsString,
           vocabularyLevel: vocabLevel,
           goals: goalsString,
-          currentBooksCount: 0
+          currentBooksCount: 0,
+          customApiKey: apiKey.trim()
         })
       });
 

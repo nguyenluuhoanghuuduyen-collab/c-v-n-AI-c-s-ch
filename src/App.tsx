@@ -116,7 +116,8 @@ export default function App() {
             nudgeGroup: profile.nudgeGroup || "default",
             dailyTargetMinutes: profile.dailyTargetMinutes || 15,
             dailyCommitmentTime: profile.dailyCommitmentTime || "21:00",
-            dailyCommitmentContext: profile.dailyCommitmentContext || "Tại bàn học"
+            dailyCommitmentContext: profile.dailyCommitmentContext || "Tại bàn học",
+            customApiKey: profile.customApiKey
           })
         });
         if (response.ok) {
@@ -236,7 +237,8 @@ export default function App() {
         headers: getHeaders(),
         body: JSON.stringify({
           title: newBookTitle,
-          author: newBookAuthor
+          author: newBookAuthor,
+          customApiKey: profile.customApiKey
         })
       });
       if (!response.ok) {
@@ -495,7 +497,8 @@ export default function App() {
           sessionPages: activeBook.microGoal.pagesPerSession,
           studentMessage: text,
           streakCount: profile.streakCount,
-          studentXP: profile.studentXP
+          studentXP: profile.studentXP,
+          customApiKey: profile.customApiKey
         })
       });
 
